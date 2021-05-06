@@ -7,11 +7,11 @@
 
 #include <rcs.hh>
 
-#define EXAMPLE_MSG_TYPE 101
+#define MESSAGE_MSG_TYPE 101
 
 struct message : public NMLmsg
 {
-    message() : NMLmsg(EXAMPLE_MSG_TYPE, sizeof(message))
+    message() : NMLmsg(MESSAGE_MSG_TYPE, sizeof(message))
     {}
 
     void update(CMS *cms);

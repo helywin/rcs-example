@@ -476,10 +476,219 @@ export LD_LIBRARY_PATH;
 ## Create nml_ex1.cc from nml_ex1.hh
 java -jar "${RCSLIB_DIR}"/bin/CodeGenCmdLine.jar nml_ex1.hh -o nml_ex1.cc
 g++ nml_set_host_alias_ex.cc nml_ex1.cc -I"${RCSLIB_DIR}"/include -L "${RCSLIB_DIR}"/lib -lrcs -o nml_set_host_alias_ex 
+```
 
 ### 使用PHANTOM缓冲区
 
 弃用
 
+### 处理错误
 
+函数 NML::read(), NML::write(), NML::peek(), and  NML::write_if_read() 在发生错误时返回-1
+函数NML::get_address() 在发生错误时返回NULL
+
+可以使用`rcs_print_error`函数打印错误的字符串描述
+
+错误类型：
+
+- NML_NO_ERROR - 没有错误
+- NML_INVALID_CONFIGURATION - 配置文件错误
+- NML_BUFFER_NOT_READ - `write_if_read`这种的返回值
+- NML_TIMED_OUT - 操作超时
+- NML_FORMAT_ERROR - `format` `update`函数有问题, 缓冲区大小不够一个消息, 或者不能识别接收到的消息格式
+- NML_NO_MASTER_ERROR - 需要通过配置为缓冲区主服务器的进程来初始化某些内容。检查主服务器是否已配置并正在运行
+- NML_INTERNAL_CMS_ERROR - CMS操作因先前未提供的原因而失败。
+
+```cpp
+int NML::valid(); 
+```
+
+判断对象是否被正确的构造
+
+返回值：
+
+0：错误
+1：成功
+
+### 启动杀死NML服务
+
+NML服务使得远程
+
+
+
+## NML配置文件
+
+| 行标识                | 行描述                                                       |
+| --------------------- | ------------------------------------------------------------ |
+| #                     | 注释行                                                       |
+| ##                    | 注释行                                                       |
+| include               | 包含其他配置文件行                                           |
+| define                | 定义变量，用`$(var_name)`方式使用变量                        |
+| format_source_pattern | 设置一个模式，该模式通过将格式中的第一个“％s”替换为format_name来从格式名称中确定format_source |
+| format_header_pattern | 设置一个模式，该模式将通过使用format_name替换模式中的第一个“％s”来从格式名称中确定header |
+| buffer_default        | 设置后面的buffer行默认值                                     |
+| b                     | 缓冲区行，在本行必须有`name=`                                |
+| process_default       | 设置后面的process行默认值                                    |
+| p                     | 进程行，后面必须包含`name=`或者`bufname=`，以便把进程和缓冲区连接 |
+
+### 缓冲区变量
+
+The following variables with the exception of "name" can be set  either on a buffer line to modify only one buffer or on a buffer default line to affect several buffers:
+
+- name
+
+  The name used as an argument to the NML constructor in the C++ or Java code. It must  be unique. There is no default value, this variable must be set on each  line with a "b ".
+
+- buftype
+
+  The type of buffer to create which can be **shmem**,**globmem**,**filemem**,**locmem** or **phantom**. The default value is shmem.
+
+- host
+
+  The host name where a server must be run if any processes are going to connect remotely. The default value is localhost.
+
+- size
+
+  The size of the largest message that can be sent to the buffer. The amount  of memory allocated will be slightly larger than this to accomodate some handshaking flags. The default value is 960.
+
+- neutral
+
+  Whether the local buffer should be neutrally encoded. Buffers should be  neutrally encoded if they can be accessed by multiple CPU types by a  Bit3 adaptor for example or to force messages to go through format and  update functions that significantly reduces message size such as when  variable length arrays are used. Messages are always neutrally encoded  when sent over a network. The default value is false.
+
+- bufnumber
+
+  A unique number used to identify the buffer within a server. The default  value is calculated based on the position of the buffer line in the  file. If its default value is modified with a default buffer line the  default value for subsequent lines will still be incremented from this  starting value.
+
+- max_proc
+
+  The maximum number of  processes that can connect to a buffer locally. It does not affect  remote processes or shmem buffers using the default mutual exclusion  mechanism. The default value is calculated based on the number of  processes connecting to this buffer. **Update February 2005:** The number is ignored unless GLOBMEM or mutex=mao is specified. 
+
+- key
+
+  A unique number used to identify the shared memory and semaphore used for mutual exclusion in a shared memory buffer. It is relavent when using  the "ipcs" or "ipcrm" commands. The default value is calculated based on the position of the buffer line in the file.
+
+- bsem
+
+  A  unique number used to identify the semaphore used for blocking reads.  Ther default value is -1, so blocking reads are not allowed by default.  However if the value is changed with a default buffer line then  subsequent lines will increment this starting value.
+
+- vme_addr
+
+  The VME address used for GLOBMEM on a VME backplane. The default value is 0 which is unusable. However if the default value is changed with a  default buffer line then subsequent buffers will use the sum of this  values plus the size of the preceding buffers.
+
+- remotetype
+
+  The protocol that should be used by remote processes connecting to this  buffer which could be tcp,stcp, or udp. The default value is tcp.
+
+- port
+
+  The TCP or UDP port used by remote processes. The default value is 30000.
+
+- enc
+
+  The nuetral encoding method which can be xdr,ascii,or disp. The default value is xdr.
+
+- queue
+
+  Whether messages in this buffer should be queued. Setting it to a value greater than 1 also multiplies the size of the buffer by this value.The default value is 0.
+
+- diag
+
+  Whether to enable supplemental  timing diagnostic information to be logged to the buffer. ( See  Supplementary NML Timing Diagnostics Tools.)
+
+- format_name
+
+  **Update February-2009:** Sets the name of the format function that should be used with the  buffer. The format name should not include the final "_format" If the  NML constructor should have been passed ex_format as the first argument, the tag in the nml file "format_name=ex" would accept this. If the  format name does not match the process will print an error message,  NML::valid() will return false, and NML::error_type will be set to  NML_FORMAT_NAME_DOES_NOT_MATCH_ERROR. If format_source_pattern or  format_header_pattern is used then the format_name and either  format_source or header was not set explicitly the format_name will be  used to determine them. If the size is not set explicitly it can be  determined by searching for the comment with the line "Estimated_size  MAXIMUM" followed by a size to use for the buffer in the generated  source file. "format=" is also accepted as a shorter verion of  "format_name=". 
+
+- format_source
+
+  **Update February-2009:** Sets the name of the C++ file with the autogenerated format and update  functions that should be used with the buffer. If the size is not set  explicitly it can be determined by searching for the comment with the  line "Estimated_size MAXIMUM" followed by a size to use for the buffer  in the generated format source file. 
+
+- header
+
+  **Update February-2009:** Sets the name of the C++ header file with the definitions of the  message classes that should be used with the buffer. If neither the  format_source nor format_name is set explicitly the format source will  be assumed to be the base of the deader name plus "_n.cc". If the size  is not set explicitly it can be determined by searching for the comment  with the line "Estimated_size MAXIMUM" followed by a size to use for the buffer in the generated format source file. 
+
+There are some additional flags that were available in the old configuration file that the new tool will not recognize. This will produce a wargning but the  old flag should simply be pasted to the end of the generated buffer line which should allow the use of the unrecognized flag.
+
+### 进程变量
+
+The following variables can be place either on a process line to  affect only one process connection to one buffer or on a default process line to affect multiple connections:
+
+- name
+
+  The name of the process that is passed to the NML constructor in the C++ or Java constructor. There is no default value, this variable must be set. **Update February.2005:** The special value of "default" will match any name. The paremeters on  this line affect any process not specifically mentioned earlier in the  file. It is different than setting a process_default parameter in that  setting a process default affects all processes subsequently named while this typically affects processes not mentioned in the file at  all.Setting both the process name and buffer name to default matches any combination. 
+
+- bufname
+
+  The name of the buffer that this process is connecting to. There is no default value, this variable must be set. **Update February.2005:** The special value of "default" will match any buffer name. The  paremeters on this line affect any buffer for this process not  specifically mentioned earlier in the file. It is different than setting a process_default parameter in that setting a process default affects  all buffers subsequently named while this typically affects buffers not  mentioned in the file at all. Setting both the process name and buffer  name to default matches any combination. 
+
+- proctype
+
+  The type of process which can be local, remote or auto. Local processes use some form of shared memory directly, remote processes go through TCP,  or UDP and require a server. Processes set to auto will attempt to  determine if direct shared memory access is possible by comparing IP  addresses.**Update February 2005** The default is auto.
+
+- host
+
+  The name of the host this process is running on. It is currently only used  to comment the output file. The default value is localhost.
+
+- ops
+
+  The operations allowed by this process on this buffer which can be **r**, **w**,or **rw**. (For READ_ONLY, WRITE_ONLY, and READ_WRITE respectively) The default value is rw.
+
+- timeout
+
+  The time in seconds to allow before this process should timeout waiting for a read or write specified as a double or "**INF**" to indicate infinity.The default value is infinity.
+
+- master
+
+  Whether this process will be the master of this buffer. The master creates and  clears the buffer when it is started. The default value is false.
+
+- server
+
+  Whether this process will act as a server for this buffer. The value of 2 has  the special meaning that the process will spawn a server but then  continue to access the buffer locally. The default value is false or 0.
+
+- c_num
+
+  The connection number which should be unique among processes connecting to  the same buffer locally. The default value is calculated based on the  number of processes that connected to this buffer before. **Update February 2005:** The number is ignored unless GLOBMEM or mutex=mao is specified. 
+
+- sub
+
+  The subscription interval in seconds for remote processes. The default value is -1 which indicates no subscription.
+
+### 示例
+
+myhosts
+
+```
+# Set host aliases. 
+define host1=localhost
+```
+
+```
+include myhosts
+# Set the pattern used to find the header file by: 
+# Replace %s with the value from format_name to find find the main 
+# C++ header file associated with the buffer that prototypes the format function. 
+format_header_pattern %s.hh 
+# Set the pattern used to find Estimated_Sizes and format 
+# function implementation. 
+# Replace %s with the value from format_name to find the main 
+# C++ file associated with the buffer with the autogenerated format function 
+# implementation.
+# if the next line is not recognized you need atleast version 
+format_source_pattern %s_n.cc
+buffer_default host=$(host1) 
+b name=ex_cmd format_name=exCmd 
+b name=ex_stat format_name=exStat 
+process_default server=1 master=1 proctype=local name=mysvr 
+p bufname=ex_cmd
+p bufname=ex_stat
+process_default server=0 master=0
+process_default name=pl
+p bufname=ex_cmd
+p bufname=ex_stat process_default name=ex
+p bufname=ex_cmd
+p bufname=ex_stat
+## Double pound comment get preserved in output config file.
+## Special default process line that will be used by any process that does not match above. 
+p bufname=default name=default proctype=auto server=0 master=0 
+```
 

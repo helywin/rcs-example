@@ -32,7 +32,7 @@
 #endif
 
 const NMLTYPE message_id_list[MESSAGE_NAME_LIST_LENGTH]= {
-	EXAMPLE_MSG_TYPE, /* 0,101 */
+	MESSAGE_MSG_TYPE, /* 0,101 */
 	-1};
 const size_t message_size_list[MESSAGE_NAME_LIST_LENGTH]= {
 	sizeof(message),
@@ -60,7 +60,7 @@ int message_format(NMLTYPE type, void *buffer, CMS *cms)
 
 	switch(type)
 	{
-	case EXAMPLE_MSG_TYPE:
+	case MESSAGE_MSG_TYPE:
 		((message *) buffer)->update(cms);
 		break;
 

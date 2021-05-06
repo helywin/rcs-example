@@ -1,0 +1,16 @@
+#format_source_pattern %s_n.cc
+#buffer_default host=localhost
+#b name=ex format_name=message
+#process_default server=1 master=1 proctype=local name=server
+#p bufname=ex
+#process_default server=1 master=1 proctype=local name=client
+#p bufname=ex
+
+# Name                     Type       Host                    size     neut?     RPC#  buffer#        MP         . . .
+B ex                       SHMEM      localhost               4096      0        *     78            *         55761 bsem=5471 TCP=5471  xdr
+
+
+# Processes
+# Name                 Buffer                       Type         Host                    Ops     server?      timeout     master?     cnum
+P client               ex                           LOCAL      localhost                 RW       0             0.1         1          1
+P server               ex                           LOCAL      localhost                 RW       0             0.1         1          1
